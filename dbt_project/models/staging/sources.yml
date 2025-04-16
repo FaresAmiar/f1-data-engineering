@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: f1
+    tables:
+      - name: race_results
+      - name: drivers
+      - name: constructors

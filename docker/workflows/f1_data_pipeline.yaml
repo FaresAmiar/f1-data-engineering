@@ -1,0 +1,8 @@
+version: 2
+id: just_a_test
+namespace: debug.test
+tasks:
+  - id: echo
+    type: io.kestra.core.tasks.scripts.Bash
+    commands:
+      - echo "If you see this, things are working."

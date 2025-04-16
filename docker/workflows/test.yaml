@@ -1,0 +1,7 @@
+id: test_workflow
+namespace: com.example.f1
+tasks:
+  - id: hello
+    type: io.kestra.core.tasks.scripts.Bash
+    commands:
+      - echo "Hello from test_workflow"

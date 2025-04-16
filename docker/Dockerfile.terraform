@@ -1,0 +1,23 @@
+# Utiliser l'image officielle Terraform
+FROM hashicorp/terraform:latest
+
+# Installer jq et uuidgen (uuidgen est dans le paquet util-linux)
+RUN apk add --no-cache jq util-linux bash
+
+# Définir le répertoire de travail dans le conteneur
+WORKDIR /workspace
+
+# Copier les scripts dans le conteneur
+COPY docker/scripts /scripts
+COPY ./sa.json /workspace/sa.json
+COPY ./terraform /workspace/terraform
+
+
+# Copier le script d'entrée
+COPY docker/scripts/terraform_init.sh /entrypoint.sh
+COPY docker/scripts/get_project_id.sh /get_project_id.sh
+# Définir le script d'entrée comme exécutable
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT [ "/entrypoint.sh" ]
+

@@ -1,0 +1,15 @@
+# docker/Dockerfile.ingestion
+FROM bitnami/spark:3.3.2
+
+# Installer les dépendances nécessaires
+RUN pip install requests google-cloud-storage
+
+WORKDIR /app
+
+COPY ./sa.json /app/sa.json
+#MOUNT ./data /app/data
+# Copier les scripts d’ingestion et d’upload
+COPY docker/spark_jobs/spark_job.py /app/scripts/spark_job.py
+
+# Ne PAS copier le fichier de credentials ici (on le monte depuis docker-compose)
+

@@ -1,0 +1,15 @@
+# docker/Dockerfile.ingestion
+FROM python:3.9-slim
+
+# Installer les dépendances nécessaires
+RUN pip install requests google-cloud-storage
+
+WORKDIR /app
+
+COPY ./sa.json /app/sa.json
+# Copier les scripts d’ingestion et d’upload
+COPY docker/scripts/ingestion.py /app/scripts/ingestion.py
+COPY docker/scripts/upload_to_gcs.py /app/scripts/upload_to_gcs.py
+
+# Ne PAS copier le fichier de credentials ici (on le monte depuis docker-compose)
+

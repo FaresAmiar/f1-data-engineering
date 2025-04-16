@@ -1,0 +1,13 @@
+terraform/.env
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+sa.json
+.env
+data
+dbt_project/logs
+dbt_project/.user.yml
+terraform/.terraform.lock.hcl
+terraform/.terraform
+dbt_project/target
+
+

@@ -1,0 +1,12 @@
+FROM alpine:3.17
+
+# Installer curl et bash
+RUN apk add --no-cache curl bash
+
+# Télécharger l'exécutable du CLI Kestra (remplacez la version si nécessaire)
+# D'après la documentation, l'asset devrait être nommé "kestra" (sans extension)
+RUN curl -L -o /usr/local/bin/kestra https://github.com/kestra-io/kestra/releases/download/v0.21.13/kestra-0.21.13 && \
+    chmod +x /usr/local/bin/kestra
+
+# Vérifiez que le binaire est bien dans le PATH en le plaçant dans /usr/local/bin
+ENTRYPOINT ["kestra"]

@@ -1,0 +1,23 @@
+FROM python:3.9-slim
+
+# Installer les dépendances système nécessaires
+RUN apt-get update && apt-get install -y git && apt-get clean
+
+# Installer dbt et le connecteur BigQuery
+RUN pip install --no-cache-dir dbt-bigquery
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Copier le projet dbt
+COPY dbt_project/ /app/dbt_project/
+
+# Copier les credentials et la config dbt
+COPY sa.json /app/sa.json
+COPY dbt_project/profiles.yml /root/.dbt/profiles.yml
+
+# Positionner le point d'entrée dans le projet
+WORKDIR /app/dbt_project
+
+# Commande par défaut
+CMD ["dbt", "run"]

@@ -1,0 +1,212 @@
+services:
+  terraform:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.terraform
+    container_name: terraform
+    volumes:
+      - ~/.config/gcloud:/root/.config/gcloud:ro
+      - ./.env:/workspace/.env
+    working_dir: /workspace
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/workspace/sa.json
+    env_file:
+      - .env
+
+
+  # # Service Redpanda (Kafka compatible)
+  # redpanda:
+  #   image: redpandadata/redpanda
+  #   container_name: redpanda
+  #   ports:
+  #     - "9092:9092"
+  #   command: ["redpanda", "start", "--overprovisioned", "--smp", "1", "--reserve-memory", "0M", "--node-id", "0", "--check=false"]
+
+  # PostgreSQL pour Airflow (metadata DB)
+  # postgres:
+  #   image: postgres:14
+  #   container_name: postgres-f1
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #     - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   environment:
+  #     POSTGRES_DB: kestra
+  #     POSTGRES_USER: kestra
+  #     POSTGRES_PASSWORD: k3str4
+  #   command: >
+  #     docker-entrypoint.sh postgres -c listen_addresses='*'
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 10
+
+
+  # Ingestion: Extraction des données via l'API Ergast et upload sur GCS
+  # kestra:
+  #     image: kestra/kestra:v0.21.2
+  #     container_name: kestra
+  #     platform: linux/amd64
+  #     command: server standalone
+  #     ports:
+  #       - "8080:8080"  # Interface web de Kestra
+  #       - "8081:8081"
+  #     volumes:
+  #       - kestra-data:/app/storage
+  #       - /tmp/kestra-wd:/tmp/kestra-wd
+  #       - ./sa.json:/app/sa.json               # Fichier de credentials GCP
+  #       - ./docker/workflows:/app/workflows          # Workflows YAML
+  #       - ./docker/scripts:/app/scripts            # Scripts Python
+  #     environment:
+  #       KESTRA_WORKFLOWS_DIR: "/app/workflows"
+  #       KESTRA_WORKFLOWS_SCAN_ENABLED: "true"
+  #       KESTRA_PLUGINS_PATH: /app/plugins  # important pour les plugins
+  #       KESTRA_PLUGINS_ENABLED: |
+  #         - io.kestra.plugin.gcp
+  #         - io.kestra.plugin.spark
+  #         - io.kestra.plugin.scripts
+  #       KESTRA_CONFIGURATION: |
+  #           datasources:
+  #             postgres:
+  #               url: jdbc:postgresql://postgres:5432/kestra
+  #               driverClassName: org.postgresql.Driver
+  #               username: kestra
+  #               password: k3str4
+  #           kestra:
+  #             server:
+  #               basicAuth:
+  #                 enabled: false
+  #             repository:
+  #               type: postgres
+  #             storage:
+  #               type: local
+  #               local:
+  #                 basePath: "/app/storage"
+  #             queue:
+  #               type: postgres
+  #             tasks:
+  #               tmpDir:
+  #                 path: /tmp/kestra-wd/tmp
+  #             url: http://localhost:8080/api/v1
+  #     depends_on:
+  #       postgres:
+  #         condition: service_healthy
+
+
+  f1_ingestion:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ingestion
+    container_name: f1_ingestion
+    working_dir: /app
+    depends_on:
+      - terraform
+    volumes:
+      - ./data:/app/data
+      - ./env:/app/.env              # Si tu utilises un .env
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json
+    command: >
+      bash -c "ls -l /app && ls -l /app/scripts &&
+               python scripts/ingestion.py &&
+               python scripts/upload_to_gcs.py"
+
+  spark_job:
+    #image: bitnami/spark:3.3.2
+    build :
+      context: .
+      dockerfile: docker/Dockerfile.spark
+    user: root
+    container_name: spark_job
+    depends_on:
+      - f1_ingestion
+    volumes:
+      - ./data:/app/data
+      - ./env:/app/.env
+    working_dir: /app
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json
+    command: >
+      bash -c "ls -l /app/data && spark-submit scripts/spark_job.py"
+
+  
+  f1_upload_processed:
+    image: python:3.9-slim
+    container_name: upload_processed
+    depends_on:
+      - spark_job
+    working_dir: /app/scripts
+    volumes:
+      - ./docker/scripts:/app
+      - ./data:/app/data
+      - ./sa.json:/app/sa.json
+      - ./env:/app/.env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json
+    command: >
+      python upload_processed.py
+
+  f1_bq_table:
+    image: python:3.9-slim
+    container_name: create_table
+    depends_on:
+      - f1_upload_processed
+    working_dir: /app
+    volumes:
+      - ./docker/scripts:/app
+      - ./sa.json:/app/sa.json
+      - ./env:/app/.env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json
+    command: >
+      bash -c "ls -l && echo '📂 Fichiers dans /app/scripts :' && ls -l /app/scripts && python create_external_table.py"
+
+      
+  # DBT: Container dédié pour exécuter les modèles DBT sur BigQuery
+  dbt:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dbt
+    depends_on:
+      - f1_bq_table
+    container_name: f1_dbt
+    env_file:
+      - .env
+    volumes:
+      - ./dbt_project:/app/dbt_project
+      - ./sa.json:/app/sa.json
+    command: >
+      bash -c "dbt debug && dbt run"
+
+  # Tests & Linting: Exécute les tests unitaires (pytest) et linting (ruff)
+  # tests:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.tests
+  #   container_name: f1_tests
+  #   volumes:
+  #     - .:/app
+  #   command: "pytest --maxfail=1 --disable-warnings -q"
+
+  # trigger-workflow:
+  #     image: kestra/kestra:latest
+  #     container_name: trigger-workflow
+  #     entrypoint: [
+  #       "kestra",
+  #       "executions",
+  #       "create",
+  #       "--namespace", "com.example.f1",
+  #       "--workflow-id", "f1_data_pipeline"
+  #     ]
+  #     depends_on:
+  #       - kestra
+
+# volumes:
+#   postgres-data:
+#     driver: local
+#   kestra-data:
+#     driver: local

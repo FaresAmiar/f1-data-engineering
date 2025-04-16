@@ -1,0 +1,9 @@
+version: 2
+id: python_test
+namespace: debug.test
+
+tasks:
+  - id: run_python
+    type: io.kestra.plugin.scripts.python.Script
+    script: |
+      print("Ça tourne en Python !")
