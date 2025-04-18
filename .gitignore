@@ -10,4 +10,3 @@ terraform/.terraform.lock.hcl
 terraform/.terraform
 dbt_project/target
 
-

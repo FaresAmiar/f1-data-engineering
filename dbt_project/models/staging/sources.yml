@@ -2,7 +2,11 @@ version: 2
 
 sources:
   - name: f1
+    database: "{{ env_var('TF_VAR_project_id') }}"
+    schema:   "{{ env_var('TF_VAR_bq_dataset_name', 'f1_dataset') }}"
+
     tables:
-      - name: race_results
-      - name: drivers
-      - name: constructors
+      - name: f1_races
+      - name: f1_results
+      - name: f1_drivers
+      - name: f1_constructors

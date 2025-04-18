@@ -1,11 +1,8 @@
 {{ config(materialized='table') }}
 
-with constructors as (
-    select
-        constructor_id,
-        constructor_name,
-        constructor_nationality
-    from {{ ref('stg_constructors') }}
-)
-
-select * from constructors
+select
+  constructor_id,                    -- STRING, conforme au staging
+  constructor_name,
+  constructor_nationality,
+  row_number() over (order by constructor_id) as constructor_sk
+from {{ ref('stg_constructors') }}
