@@ -24,7 +24,7 @@ This project addresses that challenge by delivering:
 
 - A **Spark ingestion pipeline** that flattens and denormalizes raw JSON into tabular NDJSON  
 - A **BigQuery warehouse** structured via dbt into staging, dimension, and fact tables  
-- **Consolidated SQL views** (`vw_f1_dashboard`, `vw_season_driver_summary`, etc.) ready for analysis  
+- **Consolidated SQL views** (`vw_f1_dashboard`) ready for analysis  
 - An **interactive Looker Studio dashboard** that brings all these metrics to life—enabling any team member to explore, filter, and share F1 insights with a single click  
 
 ---
