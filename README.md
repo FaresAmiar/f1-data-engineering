@@ -4,7 +4,7 @@
 
 ## Problem Statement
 
-In Formula 1, every millisecond on track can make the difference between victory and defeat. Teams generate vast amounts of data—from lap times and sector splits to tire choices and weather conditions—but it often remains:
+In Formula 1, every millisecond on the track can make the difference between victory and defeat. Teams generate vast amounts of data—from lap times and sector splits to tire choices and weather conditions—but it often remains:
 
 - **Scattered** across multiple, nested JSON files (Ergast API)  
 - **Uncleaned and unstandardized**, making cross‑analysis (driver ↔ circuit ↔ season) cumbersome  
